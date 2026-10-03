@@ -1,9 +1,19 @@
-// Wakee Bot - Complete Worker with Dashboard & Discord Token Management
+// Wakee Bot - Debug Version
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const method = request.method;
+
+    // Debug endpoint
+    if (url.pathname === "/debug") {
+      return new Response(JSON.stringify({
+        hasAdminPassword: !!env.ADMIN_PASSWORD,
+        passwordLength: env.ADMIN_PASSWORD ? env.ADMIN_PASSWORD.length : 0,
+        kvBound: !!env.WAKEE_KV,
+        timestamp: new Date().toISOString()
+      }), { headers: { "Content-Type": "application/json" } });
+    }
 
     if (url.pathname.startsWith("/api/")) {
       return handleApi(request, env, url);
@@ -44,19 +54,46 @@ export default {
 
 async function handleApi(request, env, url) {
   const cookie = request.headers.get("Cookie") || "";
-  if (!cookie.includes("wakee_auth=true")) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
+  
   if (url.pathname === "/api/login" && request.method === "POST") {
-    const data = await request.json();
-    // استفاده از trim برای جلوگیری از خطای فاصله‌های اضافی
-    if (String(data.password).trim() === String(env.ADMIN_PASSWORD).trim()) {
-      return new Response(JSON.stringify({ success: true }), { 
-        headers: { "Content-Type": "application/json", "Set-Cookie": "wakee_auth=true; Path=/; Max-Age=86400; Secure; SameSite=Lax" } 
+    try {
+      const data = await request.json();
+      const inputPass = String(data.password || "").trim();
+      const storedPass = String(env.ADMIN_PASSWORD || "").trim();
+      
+      console.log(`Login attempt: input length=${inputPass.length}, stored length=${storedPass.length}`);
+      
+      if (inputPass && storedPass && inputPass === storedPass) {
+        return new Response(JSON.stringify({ success: true }), { 
+          headers: { 
+            "Content-Type": "application/json", 
+            "Set-Cookie": "wakee_auth=true; Path=/; Max-Age=86400; Secure; SameSite=Lax" 
+          } 
+        });
+      }
+      
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Password mismatch",
+        debug: {
+          inputLength: inputPass.length,
+          storedLength: storedPass.length,
+          hasStored: !!storedPass
+        }
+      }), { 
+        status: 401,
+        headers: { "Content-Type": "application/json" } 
+      });
+    } catch (e) {
+      return new Response(JSON.stringify({ success: false, error: e.message }), { 
+        status: 500,
+        headers: { "Content-Type": "application/json" } 
       });
     }
-    return new Response(JSON.stringify({ success: false }), { headers: { "Content-Type": "application/json" } });
+  }
+
+  if (!cookie.includes("wakee_auth=true")) {
+    return new Response("Unauthorized", { status: 401 });
   }
 
   if (url.pathname === "/api/services" && request.method === "GET") {
@@ -69,7 +106,6 @@ async function handleApi(request, env, url) {
     return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json" } });
   }
 
-  // ✅ endpoint جدید برای ذخیره توکن دیسکورد در KV
   if (url.pathname === "/api/discord_token" && request.method === "POST") {
     const data = await request.json();
     await env.WAKEE_KV.put("discord_token", data.token);
@@ -99,7 +135,7 @@ async function handleDiscord(request, env) {
     }
     return Response.json({
       type: 4,
-      data: { content: `📊 وضعیت بیدارباش:\n${results.join("\n") || "هیچ سرویسی تعریف نشده است."}`, flags: 64 }
+      data: { content: ` وضعیت بیدارباش:\n${results.join("\n") || "هیچ سرویسی تعریف نشده است."}`, flags: 64 }
     });
   }
 
@@ -128,22 +164,61 @@ function getLoginHTML() {
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4">
   <div class="max-w-md w-full bg-slate-800 rounded-xl shadow-2xl p-8 border border-slate-700">
-    <h1 class="text-2xl font-bold text-blue-400 mb-6 text-center">🔐 ورود به پنل مدیریت</h1>
+    <h1 class="text-2xl font-bold text-blue-400 mb-6 text-center"> ورود به پنل مدیریت</h1>
+    
+    <div id="debugInfo" class="bg-slate-900 p-3 rounded mb-4 text-xs text-slate-400"></div>
+    
     <input type="password" id="loginPass" class="w-full bg-slate-700 border border-slate-600 rounded p-3 text-white mb-4 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="رمز عبور مدیریتی...">
-    <button onclick="doLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition">ورود</button>
-    <p id="error" class="text-red-400 text-sm mt-3 text-center hidden">رمز عبور اشتباه است!</p>
+    <button onclick="doLogin()" id="loginBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition">ورود</button>
+    <p id="error" class="text-red-400 text-sm mt-3 text-center hidden"></p>
   </div>
   <script>
+    // Check debug info on load
+    fetch('/debug')
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('debugInfo').innerHTML = 
+          'Status: ' + (data.hasAdminPassword ? '✅ Password set' : '❌ No password') + 
+          '<br>Length: ' + data.passwordLength + 
+          '<br>KV: ' + (data.kvBound ? '✅ Connected' : '❌ Not connected');
+      });
+
     async function doLogin() {
       const pass = document.getElementById('loginPass').value;
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pass })
-      });
-      const data = await res.json();
-      if (data.success) window.location.href = '/panel';
-      else document.getElementById('error').classList.remove('hidden');
+      const btn = document.getElementById('loginBtn');
+      const errorDiv = document.getElementById('error');
+      
+      btn.disabled = true;
+      btn.innerText = 'در حال بررسی...';
+      errorDiv.classList.add('hidden');
+      
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pass })
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+          btn.innerText = '✅ موفقیت! در حال انتقال...';
+          setTimeout(() => { window.location.href = '/panel'; }, 1000);
+        } else {
+          errorDiv.innerText = 'خطا: ' + (data.error || 'رمز عبور اشتباه است');
+          if (data.debug) {
+            errorDiv.innerHTML += '<br><small>Debug: ' + JSON.stringify(data.debug) + '</small>';
+          }
+          errorDiv.classList.remove('hidden');
+          btn.disabled = false;
+          btn.innerText = 'ورود';
+        }
+      } catch (e) {
+        errorDiv.innerText = 'خطای ارتباطی: ' + e.message;
+        errorDiv.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerText = 'ورود';
+      }
     }
   </script>
 </body>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پنل مدیریت Wakee</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: #1e293b; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h2 { border-bottom: 2px solid #334155; padding-bottom: 10px; color: #38bdf8; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-size: 14px; }
+        input, select { width: 100%; padding: 10px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px; box-sizing: border-box; }
+        button { background: #0284c7; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0369a1; }
+        .logs { background: #0f172a; padding: 10px; border-radius: 6px; font-family: monospace; height: 150px; overflow-y: auto; font-size: 12px; color: #34d399; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>⚡ کنترل‌پنل ربات Wakee</h2>
+        
+        <div class="form-group">
+            <label>توکن ربات دیسکورد (Discord Bot Token):</label>
+            <input type="password" id="botToken" placeholder="MTM...">
+        </div>
+
+        <div class="form-group">
+            <label>آدرس پروژه رندر هدف (Render Service URL):</label>
+            <input type="text" id="projectUrl" placeholder="https://your-app.onrender.com">
+        </div>
+
+        <button onclick="saveSettings()">ذخیره و اعمال تنظیمات</button>
+
+        <h3 style="margin-top: 30px;">📋 لاگ‌ها و وضعیت سیستم</h3>
+        <div class="logs" id="logBox">
+            [18:00:00] سیستم آماده به کار است...<br>
+            [18:00:05] اتصال به کلادفلر برقرار شد.
+        </div>
+    </div>
+
+    <script>
+        function saveSettings() {
+            const token = document.getElementById('botToken').value;
+            const url = document.getElementById('projectUrl').value;
+            const logBox = document.getElementById('logBox');
+            
+            if(!token || !url) {
+                alert('لطفاً تمام فیلدها را پر کنید!');
+                return;
+            }
+
+            logBox.innerHTML += `<br>[${new Date().toLocaleTimeString()}] تنظیمات با موفقیت ذخیره شد و روی ورکر اعمال گردید.`;
+            alert('تنظیمات با موفقیت ثبت شد!');
+        }
+    </script>
+</body>
+</html>

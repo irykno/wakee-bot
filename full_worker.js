@@ -1,21 +1,18 @@
-// Wakee Bot - Stage 2: Full Worker Code (Injected by Wizard)
+// Wakee Bot - Complete Worker with Dashboard
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const method = request.method;
 
-    // 1. API Endpoints for Dashboard
     if (url.pathname.startsWith("/api/")) {
       return handleApi(request, env, url);
     }
 
-    // 2. Discord Interactions
     if (method === "POST") {
       return handleDiscord(request, env);
     }
 
-    // 3. Frontend Routing
     if (url.pathname === "/login") {
       return new Response(getLoginHTML(), { headers: { "Content-Type": "text/html; charset=utf-8" } });
     }
@@ -28,7 +25,6 @@ export default {
       return new Response(getPanelHTML(), { headers: { "Content-Type": "text/html; charset=utf-8" } });
     }
 
-    // Default: Redirect to panel
     return Response.redirect(`${url.origin}/panel`, 302);
   },
 
@@ -38,15 +34,14 @@ export default {
       if (svc.active) {
         ctx.waitUntil(
           fetch(svc.url, { method: "GET" })
-            .then(res => console.log(\`[CRON] Pinged \${svc.name}: \${res.status}\`))
-            .catch(err => console.error(\`[CRON] Failed \${svc.name}:\`, err))
+            .then(res => console.log(`[CRON] Pinged ${svc.name}: ${res.status}`))
+            .catch(err => console.error(`[CRON] Failed ${svc.name}:`, err))
         );
       }
     }
   }
 };
 
-// --- API Handler ---
 async function handleApi(request, env, url) {
   const cookie = request.headers.get("Cookie") || "";
   if (!cookie.includes("wakee_auth=true")) {
@@ -76,13 +71,12 @@ async function handleApi(request, env, url) {
   return new Response("Not Found", { status: 404 });
 }
 
-// --- Discord Handler ---
 async function handleDiscord(request, env) {
   const bodyText = await request.text();
   let interaction;
   try { interaction = JSON.parse(bodyText); } catch (e) { return new Response("Invalid JSON", { status: 400 }); }
 
-  if (interaction.type === 1) return Response.json({ type: 1 }); // Ping
+  if (interaction.type === 1) return Response.json({ type: 1 });
 
   if (interaction.type === 3 && interaction.data.custom_id === "wake_all") {
     const services = JSON.parse(await env.WAKEE_KV.get("render_services") || "[]");
@@ -90,14 +84,14 @@ async function handleDiscord(request, env) {
     for (const svc of services) {
       try {
         const res = await fetch(svc.url, { method: "GET" });
-        results.push(\`✅ \${svc.name}: \${res.status}\`);
+        results.push(`✅ ${svc.name}: ${res.status}`);
       } catch (e) {
-        results.push(\`❌ \${svc.name}: Failed\`);
+        results.push(`❌ ${svc.name}: Failed`);
       }
     }
     return Response.json({
       type: 4,
-      data: { content: \`📊 وضعیت بیدارباش:\n\${results.join("\\n") || "هیچ سرویسی تعریف نشده است."}\`, flags: 64 }
+      data: { content: `📊 وضعیت بیدارباش:\n${results.join("\n") || "هیچ سرویسی تعریف نشده است."}`, flags: 64 }
     });
   }
 
@@ -116,9 +110,8 @@ async function handleDiscord(request, env) {
   return new Response("OK", { status: 200 });
 }
 
-// --- HTML Templates ---
 function getLoginHTML() {
-  return \`<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -146,11 +139,11 @@ function getLoginHTML() {
     }
   </script>
 </body>
-</html>\`;
+</html>`;
 }
 
 function getPanelHTML() {
-  return \`<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -199,7 +192,7 @@ function getPanelHTML() {
       services.forEach((svc, index) => {
         const div = document.createElement('div');
         div.className = 'flex justify-between items-center bg-slate-700 p-2 rounded text-sm';
-        div.innerHTML = \`<div><span class="font-bold text-blue-300">\${svc.name}</span><span class="text-slate-400 text-xs block">\${svc.url}</span></div><button onclick="removeService(\${index})" class="text-red-400 hover:text-red-300 px-2">🗑</button>\`;
+        div.innerHTML = '<div><span class="font-bold text-blue-300">' + svc.name + '</span><span class="text-slate-400 text-xs block">' + svc.url + '</span></div><button onclick="removeService(' + index + ')" class="text-red-400 hover:text-red-300 px-2">🗑</button>';
         list.appendChild(div);
       });
     }
@@ -223,10 +216,10 @@ function getPanelHTML() {
         body: JSON.stringify({ services })
       });
       renderServices();
-      document.getElementById('logBox').innerHTML += \`<br>[Action] لیست سرویس‌ها به‌روزرسانی شد.\`;
+      document.getElementById('logBox').innerHTML += '<br>[Action] لیست سرویس‌ها به‌روزرسانی شد.';
     }
     loadServices();
   </script>
 </body>
-</html>\`;
+</html>`;
 }

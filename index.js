@@ -104,10 +104,11 @@ export default {
       const { accountId, apiToken, discordToken, adminPass } = await request.json();
       const workerName = "wakee-bot";
       const kvName = "WAKEE_KV";
-      const rawWorkerUrl = "https://raw.githubusercontent.com/h4m1dr/wakeup/main/full_worker.js";
+      
+      // ✅ اصلاح شده: لینک به ریپوزیتوری جدید شما
+      const rawWorkerUrl = "https://raw.githubusercontent.com/irykno/wakee-bot/main/full_worker.js";
 
       try {
-        // Step A: Create or Find KV Namespace
         let kvId = null;
         const listRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces`, {
             headers: { 'Authorization': `Bearer ${apiToken}` }
@@ -128,12 +129,10 @@ export default {
             kvId = kvData.result.id;
         }
 
-        // Step B: Fetch full worker code from GitHub
         const scriptRes = await fetch(rawWorkerUrl);
         if (!scriptRes.ok) throw new Error("عدم دسترسی به کد اصلی در گیت‌هاب. مطمئن شوید full_worker.js وجود دارد.");
         const scriptCode = await scriptRes.text();
 
-        // Step C: Deploy full worker with KV binding
         const formData = new FormData();
         formData.append("metadata", JSON.stringify({
           main_module: "worker.js",
@@ -149,7 +148,6 @@ export default {
         const uploadData = await uploadRes.json();
         if (!uploadData.success) throw new Error("خطا در آپلود کد: " + JSON.stringify(uploadData.errors));
 
-        // Step D: Set Secrets
         const secrets = [
           { name: "DISCORD_TOKEN", text: discordToken },
           { name: "ADMIN_PASSWORD", text: adminPass }
@@ -164,7 +162,6 @@ export default {
           if (!secData.success) throw new Error(`خطا در ذخیره ${secret.name}: ` + JSON.stringify(secData.errors));
         }
 
-        // Step E: Set Cron Trigger
         await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/scripts/${workerName}/schedules`, {
           method: 'PUT',
           headers: { 'Authorization': `Bearer ${apiToken}`, 'Content-Type': 'application/json' },

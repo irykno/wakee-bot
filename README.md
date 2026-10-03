@@ -16,7 +16,7 @@ A professional, serverless Discord management and wake-up bot built for **Cloudf
    - Set up the 15-minute auto-wake Cron Job.
 6. You will be redirected to the login page of your new dashboard!
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/h4m1dr/wakeup)
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/irykno/wakee-bot)
 
 ## 📜 Policies
 - **Terms of Service:** [View Here](https://h4m1dr.github.io/wakeup/terms.html)

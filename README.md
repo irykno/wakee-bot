@@ -1,48 +1,23 @@
 # ⚡ Wakee (Wakeup Bot)
 
-A lightweight, serverless Discord management and wake-up bot built for **Cloudflare Workers**. Designed to keep your free-tier cloud services (like Render) alive using on-demand Discord UI buttons and randomized smart pings.
+A professional, serverless Discord management and wake-up bot built for **Cloudflare Workers**. Features a built-in web dashboard for managing multiple Render services, automated cron pings, and secure on-demand UI wake-ups.
 
----
+## 🚀 One-Click Auto Installation
 
-## Features
-
-- **🚀 On-Demand UI Wake-up:** Wake up your sleeping Render or cloud services instantly using modern Discord buttons.
-- **🕒 Smart Randomized Crons:** Automatically triggers randomized pings within specified active time windows to avoid robotic patterns.
-- **☁️ Cloudflare Edge Hosted:** Runs globally on Cloudflare Workers with zero sleep timeout and absolute reliability.
-- **🔒 Secure Interactions:** Validates all incoming Discord webhook signatures natively.
-
----
-
-## 🚀 Quick Start (Two-Stage Automated Deployment)
-
-1. Click the button below to deploy the **Seed Worker** to your Cloudflare account.
+1. Click the button below to deploy the **Installer Worker** to your Cloudflare account.
+2. Open the provided Worker URL (e.g., `https://wakee-bot.your-subdomain.workers.dev`).
+3. You will see the **Auto-Setup Wizard**.
+4. Enter your Cloudflare Account ID, an API Token (with Workers & KV Edit permissions), your Discord Bot Token, and a Panel Password.
+5. Click "Start Installation". The worker will automatically:
+   - Create the required KV Namespace.
+   - Download the full bot code from this repository.
+   - Deploy the full code and bind the KV.
+   - Securely store your tokens as Cloudflare Secrets.
+   - Set up the 15-minute auto-wake Cron Job.
+6. You will be redirected to the login page of your new dashboard!
 
 [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/h4m1dr/wakeup)
-
-2. Open the provided Worker URL (e.g., `https://wakee-bot.your-subdomain.workers.dev`).
-3. Follow the **Setup Wizard** on the page. It will automatically:
-   - Create a KV Namespace (`WAKEE_KV`).
-   - Inject the full bot code.
-   - Securely store your Discord Token and Admin Password.
-   - Set up a Cron Job for automated wake-ups.
-
-
-## 🛠 Manual Setup (If needed)
-If the automated wizard fails, you can manually:
-1. Create a KV Namespace named `WAKEE_KV` in Cloudflare.
-2. Copy the contents of `full_worker.js` into your Worker.
-3. Bind the KV Namespace to the variable `WAKEE_KV`.
-4. Add Secrets: `DISCORD_TOKEN` and `ADMIN_PASSWORD`.
-5. Set a Cron Trigger to `*/15 * * * *`.
 
 ## 📜 Policies
 - **Terms of Service:** [View Here](https://h4m1dr.github.io/wakeup/terms.html)
 - **Privacy Policy:** [View Here](https://h4m1dr.github.io/wakeup/privacy.html)
-
----
-
-## License
-
-MIT License
-
----

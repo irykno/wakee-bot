@@ -1,4 +1,4 @@
-// Wakee Bot - Complete Worker with Dashboard
+// Wakee Bot - Complete Worker with Dashboard & Discord Token Management
 
 export default {
   async fetch(request, env, ctx) {
@@ -25,7 +25,7 @@ export default {
       return new Response(getPanelHTML(), { headers: { "Content-Type": "text/html; charset=utf-8" } });
     }
 
-    return Response.redirect(`${url.origin}/panel`, 302);
+    return Response.redirect(`${url.origin}/login`, 302);
   },
 
   async scheduled(event, env, ctx) {
@@ -50,7 +50,8 @@ async function handleApi(request, env, url) {
 
   if (url.pathname === "/api/login" && request.method === "POST") {
     const data = await request.json();
-    if (data.password === env.ADMIN_PASSWORD) {
+    // استفاده از trim برای جلوگیری از خطای فاصله‌های اضافی
+    if (String(data.password).trim() === String(env.ADMIN_PASSWORD).trim()) {
       return new Response(JSON.stringify({ success: true }), { 
         headers: { "Content-Type": "application/json", "Set-Cookie": "wakee_auth=true; Path=/; Max-Age=86400; Secure; SameSite=Lax" } 
       });
@@ -65,6 +66,13 @@ async function handleApi(request, env, url) {
   if (url.pathname === "/api/services" && request.method === "POST") {
     const data = await request.json();
     await env.WAKEE_KV.put("render_services", JSON.stringify(data.services));
+    return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json" } });
+  }
+
+  // ✅ endpoint جدید برای ذخیره توکن دیسکورد در KV
+  if (url.pathname === "/api/discord_token" && request.method === "POST") {
+    const data = await request.json();
+    await env.WAKEE_KV.put("discord_token", data.token);
     return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json" } });
   }
 
@@ -169,11 +177,19 @@ function getPanelHTML() {
         </div>
       </div>
 
-      <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
-        <h3 class="text-lg font-semibold mb-2 text-yellow-400">📋 لاگ‌های سیستم</h3>
-        <div class="bg-slate-950 rounded p-4 font-mono text-xs h-64 overflow-y-auto text-green-300" id="logBox">
-          [System] پنل با موفقیت بارگذاری شد.<br>
-          [Info] برای دیدن لاگ‌های واقعی، سیستم به صورت خودکار پینگ‌ها را در پس‌زمینه ثبت می‌کند.
+      <div class="space-y-6">
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+          <h3 class="text-lg font-semibold mb-2 text-purple-400">تنظیمات دیسکورد</h3>
+          <p class="text-xs text-slate-400 mb-3">توکن ربات دیسکورد خود را اینجا وارد کنید.</p>
+          <input type="password" id="discordTokenInput" placeholder="Discord Bot Token" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-sm mb-3">
+          <button onclick="saveDiscordToken()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded text-sm w-full">ذخیره توکن دیسکورد</button>
+        </div>
+
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+          <h3 class="text-lg font-semibold mb-2 text-yellow-400">📋 لاگ‌های سیستم</h3>
+          <div class="bg-slate-950 rounded p-4 font-mono text-xs h-40 overflow-y-auto text-green-300" id="logBox">
+            [System] پنل با موفقیت بارگذاری شد.
+          </div>
         </div>
       </div>
     </div>
@@ -218,6 +234,20 @@ function getPanelHTML() {
       renderServices();
       document.getElementById('logBox').innerHTML += '<br>[Action] لیست سرویس‌ها به‌روزرسانی شد.';
     }
+    
+    async function saveDiscordToken() {
+      const token = document.getElementById('discordTokenInput').value;
+      if(!token) return alert('توکن را وارد کنید');
+      await fetch('/api/discord_token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      alert('توکن دیسکورد با موفقیت ذخیره شد!');
+      document.getElementById('discordTokenInput').value = '';
+      document.getElementById('logBox').innerHTML += '<br>[Action] توکن دیسکورد به‌روزرسانی شد.';
+    }
+
     loadServices();
   </script>
 </body>

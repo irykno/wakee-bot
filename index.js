@@ -14,7 +14,6 @@ const WIZARD_HTML = `<!DOCTYPE html>
         <p class="text-center text-slate-400 mb-8 text-sm">اطلاعات زیر را وارد کنید تا ربات به صورت کاملاً خودکار پیکربندی، KV ساخته و کد اصلی جایگزین شود.</p>
 
         <div class="space-y-6">
-            <!-- Step 1: Cloudflare Info -->
             <div class="bg-slate-900 p-5 rounded-lg border-r-4 border-yellow-500">
                 <h3 class="font-bold text-lg mb-3 text-yellow-300">۱. اطلاعات حساب کلادفلر</h3>
                 <label class="block text-sm mb-1">Account ID:</label>
@@ -23,11 +22,10 @@ const WIZARD_HTML = `<!DOCTYPE html>
 
                 <label class="block text-sm mb-1">Cloudflare API Token:</label>
                 <input type="password" id="cfApiToken" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-white mb-2 focus:ring-2 focus:ring-yellow-500 outline-none" placeholder="توکن با دسترسی‌های Workers Edit و KV Edit">
-                <p class="text-xs text-slate-400 mb-3">⚠️ هنگام ساخت توکن، الگوی "Edit Cloudflare Workers" را انتخاب کرده و دسترسی <strong>Account > Workers KV Storage > Edit</strong> را نیز دستی اضافه کنید.</a>
+                <p class="text-xs text-slate-400 mb-3">⚠️ هنگام ساخت توکن، الگوی "Edit Cloudflare Workers" را انتخاب کرده و دسترسی Account > Workers KV Storage > Edit را نیز دستی اضافه کنید.</p>
                 <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" class="text-xs text-blue-400 hover:underline">🔗 ساخت توکن جدید در کلادفلر</a>
             </div>
 
-            <!-- Step 2: Bot Config -->
             <div class="bg-slate-900 p-5 rounded-lg border-r-4 border-green-500">
                 <h3 class="font-bold text-lg mb-3 text-green-300">۲. تنظیمات ربات</h3>
                 <label class="block text-sm mb-1">Discord Bot Token:</label>
@@ -37,12 +35,11 @@ const WIZARD_HTML = `<!DOCTYPE html>
                 <input type="password" id="adminPass" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-white focus:ring-2 focus:ring-green-500 outline-none" placeholder="یک رمز قوی برای ورود به پنل">
             </div>
 
-            <!-- Action Button -->
             <button id="installBtn" onclick="startInstallation()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg transition duration-200 text-lg shadow-lg">
                 🚀 شروع نصب خودکار و ارتقای ورکر
             </button>
             
-            <div id="statusLog" class="hidden bg-black rounded p-4 font-mono text-xs text-green-400 h-40 overflow-y-auto border border-slate-700"></div>
+            <div id="statusLog" class="hidden bg-black rounded p-4 font-mono text-xs text-green-400 h-40 overflow-y-auto border border-slate-700 mt-4"></div>
         </div>
     </div>
 
@@ -50,7 +47,7 @@ const WIZARD_HTML = `<!DOCTYPE html>
         function log(msg) {
             const logBox = document.getElementById('statusLog');
             logBox.classList.remove('hidden');
-            logBox.innerHTML += \`> \${msg}<br>\`;
+            logBox.innerHTML += '> ' + msg + '<br>';
             logBox.scrollTop = logBox.scrollHeight;
         }
 
@@ -86,7 +83,7 @@ const WIZARD_HTML = `<!DOCTYPE html>
                     throw new Error(data.error || 'خطای ناشناخته در نصب');
                 }
             } catch (error) {
-                log(\`❌ خطا: \${error.message}\`);
+                log('❌ خطا: ' + error.message);
                 btn.disabled = false;
                 btn.innerText = '🚀 تلاش مجدد برای نصب';
             }
@@ -99,12 +96,10 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // 1. Show Wizard UI
     if (url.pathname === "/" || url.pathname === "/setup") {
       return new Response(WIZARD_HTML, { headers: { "Content-Type": "text/html; charset=utf-8" } });
     }
 
-    // 2. Handle Installation API (Server-to-Server, NO CORS ISSUES)
     if (url.pathname === "/api/install" && request.method === "POST") {
       const { accountId, apiToken, discordToken, adminPass } = await request.json();
       const workerName = "wakee-bot";
@@ -112,21 +107,30 @@ export default {
       const rawWorkerUrl = "https://raw.githubusercontent.com/h4m1dr/wakeup/main/full_worker.js";
 
       try {
-        // Step A: Create KV Namespace
-        const kvRes = await fetch(\`https://api.cloudflare.com/client/v4/accounts/\${accountId}/storage/kv/namespaces\`, {
-          method: 'POST',
-          headers: { 'Authorization': \`Bearer \${apiToken}\`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: kvName })
+        // Step A: Create or Find KV Namespace
+        let kvId = null;
+        const listRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces`, {
+            headers: { 'Authorization': `Bearer ${apiToken}` }
         });
-        const kvData = await kvRes.json();
-        if (!kvData.success && !kvData.errors?.[0]?.message?.includes("already exists")) {
-          throw new Error("خطا در ساخت KV: " + JSON.stringify(kvData.errors));
+        const listData = await listRes.json();
+        const existingKv = listData.result.find(k => k.title === kvName);
+        
+        if (existingKv) {
+            kvId = existingKv.id;
+        } else {
+            const kvRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${apiToken}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ title: kvName })
+            });
+            const kvData = await kvRes.json();
+            if (!kvData.success) throw new Error("خطا در ساخت KV: " + JSON.stringify(kvData.errors));
+            kvId = kvData.result.id;
         }
-        const kvId = kvData.result?.id || (await getExistingKvId(accountId, apiToken, kvName));
 
         // Step B: Fetch full worker code from GitHub
         const scriptRes = await fetch(rawWorkerUrl);
-        if (!scriptRes.ok) throw new Error("عدم دسترسی به کد اصلی در گیت‌هاب");
+        if (!scriptRes.ok) throw new Error("عدم دسترسی به کد اصلی در گیت‌هاب. مطمئن شوید full_worker.js وجود دارد.");
         const scriptCode = await scriptRes.text();
 
         // Step C: Deploy full worker with KV binding
@@ -137,9 +141,9 @@ export default {
         }));
         formData.append("worker.js", new Blob([scriptCode], { type: "application/javascript+module" }));
 
-        const uploadRes = await fetch(\`https://api.cloudflare.com/client/v4/accounts/\${accountId}/workers/scripts/\${workerName}\`, {
+        const uploadRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/scripts/${workerName}`, {
           method: 'PUT',
-          headers: { 'Authorization': \`Bearer \${apiToken}\` },
+          headers: { 'Authorization': `Bearer ${apiToken}` },
           body: formData
         });
         const uploadData = await uploadRes.json();
@@ -151,19 +155,19 @@ export default {
           { name: "ADMIN_PASSWORD", text: adminPass }
         ];
         for (const secret of secrets) {
-          const secRes = await fetch(\`https://api.cloudflare.com/client/v4/accounts/\${accountId}/workers/scripts/\${workerName}/secrets\`, {
+          const secRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/scripts/${workerName}/secrets`, {
             method: 'PUT',
-            headers: { 'Authorization': \`Bearer \${apiToken}\`, 'Content-Type': 'application/json' },
+            headers: { 'Authorization': `Bearer ${apiToken}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: secret.name, text: secret.text, type: "secret_text" })
           });
           const secData = await secRes.json();
-          if (!secData.success) throw new Error(\`خطا در ذخیره \${secret.name}\`);
+          if (!secData.success) throw new Error(`خطا در ذخیره ${secret.name}: ` + JSON.stringify(secData.errors));
         }
 
         // Step E: Set Cron Trigger
-        await fetch(\`https://api.cloudflare.com/client/v4/accounts/\${accountId}/workers/scripts/\${workerName}/schedules\`, {
+        await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/scripts/${workerName}/schedules`, {
           method: 'PUT',
-          headers: { 'Authorization': \`Bearer \${apiToken}\`, 'Content-Type': 'application/json' },
+          headers: { 'Authorization': `Bearer ${apiToken}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ cron: ["*/15 * * * *"] })
         });
 
@@ -177,13 +181,3 @@ export default {
     return new Response("Not Found", { status: 404 });
   }
 };
-
-// Helper to find KV ID if it already exists
-async function getExistingKvId(accountId, apiToken, kvName) {
-  const res = await fetch(\`https://api.cloudflare.com/client/v4/accounts/\${accountId}/storage/kv/namespaces\`, {
-    headers: { 'Authorization': \`Bearer \${apiToken}\` }
-  });
-  const data = await res.json();
-  const kv = data.result.find(k => k.title === kvName);
-  return kv ? kv.id : null;
-}

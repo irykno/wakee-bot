@@ -1,89 +1,189 @@
-// Wakee Bot - Stage 1: Smart Setup Wizard (CORS-Safe)
+// Wakee Bot - Smart Installer Wizard (Server-Side Proxy)
+
 const WIZARD_HTML = `<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>راه‌اندازی Wakee | Setup Wizard</title>
+    <title>راه‌اندازی خودکار Wakee | Auto Installer</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4">
     <div class="max-w-3xl w-full bg-slate-800 rounded-xl shadow-2xl p-8 border border-slate-700">
-        <h1 class="text-3xl font-bold text-blue-400 mb-2 text-center">⚡ جادوگر راه‌اندازی Wakee</h1>
-        <p class="text-center text-slate-400 mb-8 text-sm">به دلیل محدودیت‌های امنیتی مرورگر (CORS)، پیکربندی نهایی نیازمند ۳ اقدام ساده در پنل کلادفلر است. این مراحل کمتر از ۱ دقیقه زمان می‌برد.</p>
+        <h1 class="text-3xl font-bold text-blue-400 mb-2 text-center">⚡ نصب خودکار Wakee Bot</h1>
+        <p class="text-center text-slate-400 mb-8 text-sm">اطلاعات زیر را وارد کنید تا ربات به صورت کاملاً خودکار پیکربندی، KV ساخته و کد اصلی جایگزین شود.</p>
 
         <div class="space-y-6">
-            <!-- Step 1: Discord Info -->
-            <div class="bg-slate-900 p-5 rounded-lg border-r-4 border-blue-500">
-                <h3 class="font-bold text-lg mb-3 text-blue-300">۱. تنظیمات دیسکورد</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-3">
-                    <div><span class="text-slate-500">Name:</span> <code class="bg-slate-700 px-2 py-1 rounded text-white">Wakee</code></div>
-                    <div><span class="text-slate-500">Description:</span> <code class="bg-slate-700 px-2 py-1 rounded text-white text-xs">Smart management and wake-up bot for Render services.</code></div>
-                    <div class="md:col-span-2"><span class="text-slate-500">Terms/Privacy URL:</span> <code class="bg-slate-700 px-2 py-1 rounded text-white text-xs break-all">https://h4m1dr.github.io/wakeup/terms.html</code></div>
-                    <div class="md:col-span-2"><span class="text-slate-500">Interactions Endpoint:</span> <code id="workerUrl" class="bg-slate-700 px-2 py-1 rounded text-green-400 text-xs break-all">در حال دریافت...</code></div>
-                </div>
-                <p class="text-xs text-yellow-400">⚠️ در بخش <strong>Bot</strong> دیسکورد، گزینه‌های Presence, Server Members, و Message Content Intent را روشن کنید.</p>
-            </div>
-
-            <!-- Step 2: Cloudflare KV -->
+            <!-- Step 1: Cloudflare Info -->
             <div class="bg-slate-900 p-5 rounded-lg border-r-4 border-yellow-500">
-                <h3 class="font-bold text-lg mb-3 text-yellow-300">۲. ساخت فضای ذخیره‌سازی (KV)</h3>
-                <ol class="list-decimal list-inside text-sm text-slate-300 space-y-2">
-                    <li>به <a href="https://dash.cloudflare.com/?to=/:account/workers/kv/namespaces" target="_blank" class="text-blue-400 underline font-bold">صفحه ساخت KV کلادفلر</a> بروید.</li>
-                    <li>روی <strong>Create a namespace</strong> کلیک کنید.</li>
-                    <li>نام آن را دقیقاً <code class="bg-slate-700 px-1 rounded text-white">WAKEE_KV</code> بگذارید و Add را بزنید.</li>
-                </ol>
+                <h3 class="font-bold text-lg mb-3 text-yellow-300">۱. اطلاعات حساب کلادفلر</h3>
+                <label class="block text-sm mb-1">Account ID:</label>
+                <input type="text" id="cfAccountId" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-white mb-3 focus:ring-2 focus:ring-yellow-500 outline-none" placeholder="مثال: 8d5a...">
+                <a href="https://dash.cloudflare.com/?to=/:account/workers" target="_blank" class="text-xs text-blue-400 hover:underline mb-4 block">🔗 پیدا کردن Account ID</a>
+
+                <label class="block text-sm mb-1">Cloudflare API Token:</label>
+                <input type="password" id="cfApiToken" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-white mb-2 focus:ring-2 focus:ring-yellow-500 outline-none" placeholder="توکن با دسترسی‌های Workers Edit و KV Edit">
+                <p class="text-xs text-slate-400 mb-3">⚠️ هنگام ساخت توکن، الگوی "Edit Cloudflare Workers" را انتخاب کرده و دسترسی <strong>Account > Workers KV Storage > Edit</strong> را نیز دستی اضافه کنید.</a>
+                <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" class="text-xs text-blue-400 hover:underline">🔗 ساخت توکن جدید در کلادفلر</a>
             </div>
 
-            <!-- Step 3: Secrets -->
+            <!-- Step 2: Bot Config -->
             <div class="bg-slate-900 p-5 rounded-lg border-r-4 border-green-500">
-                <h3 class="font-bold text-lg mb-3 text-green-300">۳. وارد کردن توکن‌ها (Secrets)</h3>
-                <ol class="list-decimal list-inside text-sm text-slate-300 space-y-2">
-                    <li>به صفحه ورکر خود در کلادفلر بروید: <a href="https://dash.cloudflare.com/?to=/:account/workers/services/view/wakee-bot/production/settings/bindings" target="_blank" class="text-blue-400 underline font-bold">مدیریت Bindings ورکر</a></li>
-                    <li>در بخش <strong>Variables</strong>، روی <strong>Add variable</strong> کلیک کنید:</li>
-                    <ul class="list-disc list-inside mr-6 text-xs text-slate-400 mt-1 space-y-1">
-                        <li>Variable name: <code class="text-white">ADMIN_PASSWORD</code> | Value: <span class="text-yellow-300">(رمز دلخواه خود را اینجا بنویسید و به خاطر بسپارید)</span></li>
-                        <li>Variable name: <code class="text-white">DISCORD_TOKEN</code> | Value: <span class="text-yellow-300">(توکن ربات دیسکورد خود را اینجا پیست کنید)</span></li>
-                    </ul>
-                    <li>در بخش <strong>KV Namespace Bindings</strong>، روی <strong>Add binding</strong> کلیک کنید: Variable name را <code class="text-white">WAKEE_KV</code> و KV Namespace را همان چیزی که در مرحله ۲ ساختید انتخاب کنید.</li>
-                    <li>روی دکمه <strong>Save and Deploy</strong> در بالای صفحه کلادفلر کلیک کنید.</li>
-                </ol>
-            </div>
-
-            <!-- Step 4: Final Code -->
-            <div class="bg-slate-900 p-5 rounded-lg border-r-4 border-purple-500">
-                <h3 class="font-bold text-lg mb-3 text-purple-300">۴. جایگذاری کد نهایی</h3>
-                <ol class="list-decimal list-inside text-sm text-slate-300 space-y-2">
-                    <li>به تب <strong>Quick Edit</strong> در صفحه ورکر کلادفلر خود بروید.</li>
-                    <li>تمام کدهای موجود را پاک کنید.</li>
-                    <li>کد کامل را از <a href="https://raw.githubusercontent.com/h4m1dr/wakeup/main/full_worker.js" target="_blank" class="text-blue-400 underline font-bold">این لینک (full_worker.js)</a> کپی کرده و آنجا پیست کنید.</li>
-                    <li>دوباره <strong>Save and Deploy</strong> را بزنید.</li>
-                </ol>
+                <h3 class="font-bold text-lg mb-3 text-green-300">۲. تنظیمات ربات</h3>
+                <label class="block text-sm mb-1">Discord Bot Token:</label>
+                <input type="password" id="discordToken" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-white mb-3 focus:ring-2 focus:ring-green-500 outline-none" placeholder="توکن ربات دیسکورد">
+                
+                <label class="block text-sm mb-1">رمز عبور مدیریت پنل (Admin Password):</label>
+                <input type="password" id="adminPass" class="w-full bg-slate-700 border border-slate-600 rounded p-2 text-white focus:ring-2 focus:ring-green-500 outline-none" placeholder="یک رمز قوی برای ورود به پنل">
             </div>
 
             <!-- Action Button -->
-            <button onclick="finishSetup()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-lg transition duration-200 text-lg shadow-lg mt-4">
-                ✅ تمام مراحل بالا را انجام دادم، ورود به پنل مدیریت
+            <button id="installBtn" onclick="startInstallation()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg transition duration-200 text-lg shadow-lg">
+                🚀 شروع نصب خودکار و ارتقای ورکر
             </button>
+            
+            <div id="statusLog" class="hidden bg-black rounded p-4 font-mono text-xs text-green-400 h-40 overflow-y-auto border border-slate-700"></div>
         </div>
     </div>
 
     <script>
-        document.getElementById('workerUrl').innerText = window.location.origin;
+        function log(msg) {
+            const logBox = document.getElementById('statusLog');
+            logBox.classList.remove('hidden');
+            logBox.innerHTML += \`> \${msg}<br>\`;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
 
-        function finishSetup() {
-            // هدایت مستقیم به پنل. اگر مراحل بالا درست انجام شده باشد، 
-            // ورکر اکنون کد کامل را دارد و با رمز عبور کار می‌کند.
-            window.location.href = '/login';
+        async function startInstallation() {
+            const accountId = document.getElementById('cfAccountId').value.trim();
+            const apiToken = document.getElementById('cfApiToken').value.trim();
+            const discordToken = document.getElementById('discordToken').value.trim();
+            const adminPass = document.getElementById('adminPass').value.trim();
+            const btn = document.getElementById('installBtn');
+
+            if (!accountId || !apiToken || !discordToken || !adminPass) {
+                alert('لطفاً تمام فیلدها را پر کنید!');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = '⏳ در حال پیکربندی... (لطفاً ۳۰ ثانیه صبر کنید)';
+            log('شروع فرآیند نصب سمت سرور...');
+
+            try {
+                const res = await fetch('/api/install', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accountId, apiToken, discordToken, adminPass })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    log('✅ نصب با موفقیت کامل شد! در حال انتقال به پنل...');
+                    setTimeout(() => { window.location.href = '/login'; }, 2000);
+                } else {
+                    throw new Error(data.error || 'خطای ناشناخته در نصب');
+                }
+            } catch (error) {
+                log(\`❌ خطا: \${error.message}\`);
+                btn.disabled = false;
+                btn.innerText = '🚀 تلاش مجدد برای نصب';
+            }
         }
     </script>
 </body>
 </html>`;
 
 export default {
-  async fetch(request) {
-    return new Response(WIZARD_HTML, {
-      headers: { "Content-Type": "text/html; charset=utf-8" },
-    });
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+
+    // 1. Show Wizard UI
+    if (url.pathname === "/" || url.pathname === "/setup") {
+      return new Response(WIZARD_HTML, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+    }
+
+    // 2. Handle Installation API (Server-to-Server, NO CORS ISSUES)
+    if (url.pathname === "/api/install" && request.method === "POST") {
+      const { accountId, apiToken, discordToken, adminPass } = await request.json();
+      const workerName = "wakee-bot";
+      const kvName = "WAKEE_KV";
+      const rawWorkerUrl = "https://raw.githubusercontent.com/h4m1dr/wakeup/main/full_worker.js";
+
+      try {
+        // Step A: Create KV Namespace
+        const kvRes = await fetch(\`https://api.cloudflare.com/client/v4/accounts/\${accountId}/storage/kv/namespaces\`, {
+          method: 'POST',
+          headers: { 'Authorization': \`Bearer \${apiToken}\`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: kvName })
+        });
+        const kvData = await kvRes.json();
+        if (!kvData.success && !kvData.errors?.[0]?.message?.includes("already exists")) {
+          throw new Error("خطا در ساخت KV: " + JSON.stringify(kvData.errors));
+        }
+        const kvId = kvData.result?.id || (await getExistingKvId(accountId, apiToken, kvName));
+
+        // Step B: Fetch full worker code from GitHub
+        const scriptRes = await fetch(rawWorkerUrl);
+        if (!scriptRes.ok) throw new Error("عدم دسترسی به کد اصلی در گیت‌هاب");
+        const scriptCode = await scriptRes.text();
+
+        // Step C: Deploy full worker with KV binding
+        const formData = new FormData();
+        formData.append("metadata", JSON.stringify({
+          main_module: "worker.js",
+          bindings: [{ name: "WAKEE_KV", type: "kv_namespace", namespace_id: kvId }]
+        }));
+        formData.append("worker.js", new Blob([scriptCode], { type: "application/javascript+module" }));
+
+        const uploadRes = await fetch(\`https://api.cloudflare.com/client/v4/accounts/\${accountId}/workers/scripts/\${workerName}\`, {
+          method: 'PUT',
+          headers: { 'Authorization': \`Bearer \${apiToken}\` },
+          body: formData
+        });
+        const uploadData = await uploadRes.json();
+        if (!uploadData.success) throw new Error("خطا در آپلود کد: " + JSON.stringify(uploadData.errors));
+
+        // Step D: Set Secrets
+        const secrets = [
+          { name: "DISCORD_TOKEN", text: discordToken },
+          { name: "ADMIN_PASSWORD", text: adminPass }
+        ];
+        for (const secret of secrets) {
+          const secRes = await fetch(\`https://api.cloudflare.com/client/v4/accounts/\${accountId}/workers/scripts/\${workerName}/secrets\`, {
+            method: 'PUT',
+            headers: { 'Authorization': \`Bearer \${apiToken}\`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: secret.name, text: secret.text, type: "secret_text" })
+          });
+          const secData = await secRes.json();
+          if (!secData.success) throw new Error(\`خطا در ذخیره \${secret.name}\`);
+        }
+
+        // Step E: Set Cron Trigger
+        await fetch(\`https://api.cloudflare.com/client/v4/accounts/\${accountId}/workers/scripts/\${workerName}/schedules\`, {
+          method: 'PUT',
+          headers: { 'Authorization': \`Bearer \${apiToken}\`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cron: ["*/15 * * * *"] })
+        });
+
+        return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json" } });
+
+      } catch (error) {
+        return new Response(JSON.stringify({ success: false, error: error.message }), { status: 500, headers: { "Content-Type": "application/json" } });
+      }
+    }
+
+    return new Response("Not Found", { status: 404 });
   }
 };
+
+// Helper to find KV ID if it already exists
+async function getExistingKvId(accountId, apiToken, kvName) {
+  const res = await fetch(\`https://api.cloudflare.com/client/v4/accounts/\${accountId}/storage/kv/namespaces\`, {
+    headers: { 'Authorization': \`Bearer \${apiToken}\` }
+  });
+  const data = await res.json();
+  const kv = data.result.find(k => k.title === kvName);
+  return kv ? kv.id : null;
+}
